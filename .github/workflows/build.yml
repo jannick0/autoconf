@@ -1,0 +1,147 @@
+# https://github.com/ghdl/ghdl/blob/99b542c849311c92e87e2c70d283de133c9d4093/.github/workflows/push.yml#L56-L102
+
+name: build
+
+on:
+  push:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  msys2:
+    runs-on: windows-latest
+    env:
+      MSYSTEM: MSYS
+      GIT_CONFIG_NOSYSTEM: true
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Init MSYS2-System
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          msystem: MSYS
+          install: >-
+            git
+            base
+            base-devel
+            msys2-devel
+      - name: Require git-clone without EOL changes
+        # ... otherwise BUILD (autoconf.texi and other documentation friends) fwill fail.
+        run: |
+          git config --global core.autocrlf false
+          git config --global --list
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Run Configuration
+        run: |
+          autoreconf -vfi
+          mkdir -p build
+          cd build
+          ../configure -C
+      - name: Run Build
+        if: ${{ success() }}
+        run: make -j1
+        working-directory: build
+      - name: Run Testsuite
+        if: ${{ success() }}
+        run: make check TESTSUITEFLAGS='-j16' || make check TESTSUITEFLAGS='--recheck -j16 -v -x -d'
+        working-directory: build
+      - name: Generate Artifacts upon Failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: MSYS-failure
+          path: |
+            build/config.*
+            build/tests/**
+            !build/**/at-job-fifo.*
+            !build/**/*.lnk
+
+  macos:
+    runs-on: macos-latest
+    env:
+      GIT_CONFIG_NOSYSTEM: true
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Init OSX-System
+        run: brew install autoconf automake gettext texinfo help2man
+      - name: Require git-clone without EOL changes
+        # ... otherwise BUILD (autoconf.texi and other documentation friends) fwill fail.
+        run: |
+          git config --global core.autocrlf false
+          git config --global --list
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Run Configuration
+        run: |
+          autoreconf -vfi
+          mkdir -p build
+          cd build
+          ../configure -C
+      - name: Run Build
+        if: ${{ success() }}
+        run: make -j1
+        working-directory: build
+      - name: Run Testsuite
+        if: ${{ success() }}
+        run: make check TESTSUITEFLAGS='-j16' || make check TESTSUITEFLAGS='--recheck -j16 -v -x -d'
+        working-directory: build
+
+  unix:
+    runs-on: ubuntu-latest
+    env:
+      GIT_CONFIG_NOSYSTEM: true
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Init UNIX-System
+        run: brew install autoconf automake gettext texinfo help2man
+      - name: Require git-clone without EOL changes
+        # ... otherwise BUILD (autoconf.texi and other documentation friends) fwill fail.
+        run: |
+          git config --global core.autocrlf false
+          git config --global --list
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Run Configuration
+        run: |
+          autoreconf -vfi
+          mkdir -p build
+          cd build
+          ../configure -C
+      - name: Run Build
+        if: ${{ success() }}
+        run: make -j1
+        working-directory: build
+      - name: Run Testsuite
+        if: ${{ success() }}
+        run: make check TESTSUITEFLAGS='-j16' || make check TESTSUITEFLAGS='--recheck -j16 -v -x -d'
+        working-directory: build
+      - name: Generate Artifacts upon Failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: Unix-failure
+          path: |
+            build/config.*
+            build/tests/**
+            !build/**/at-job-fifo.*
+            !build/**/*.lnk
