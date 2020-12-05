@@ -160,6 +160,9 @@ clean-local:
 check-local: tests/atconfig tests/atlocal $(TESTSUITE)
 	+$(run_testsuite) $(TESTSUITEFLAGS)
 
+tests/atconfig: config.status
+	$(SHELL) ./config.status --file=tests/atconfig
+
 # Run the test suite on the *installed* tree.
 installcheck-local: tests/atconfig tests/atlocal $(TESTSUITE)
 	+$(run_testsuite) AUTOTEST_PATH="$(bindir)" $(TESTSUITEFLAGS)
