@@ -61,7 +61,8 @@ at_top_srcdir=.
 abs_top_srcdir='`pwd`'
 at_top_build_prefix=
 abs_top_builddir='`pwd`'
-EOF])
+EOF
+])
 m4_ifval([$6], [(cd AT_dir])
 AT_CHECK_AUTOM4TE([--language=autotest -o $1 $1.at], [$3], [$4], [$5])
 m4_ifval([$6], [)])
@@ -129,7 +130,7 @@ m4_define([AT_NO_CMDSUBST],
 # Run grep -E, counting how many times PATTERN occurs in the file 'stdout',
 # and expecting exit STATUS and output COUNT.
 m4_define([AT_CHECK_EGREP],
-[AT_CHECK([$EGREP -c '$1' stdout], [$2], [$3
+[AT_CHECK([$EGREP -c -e '$1' stdout], [$2], [$3
 ], [ignore])
 ])
 
@@ -1964,7 +1965,7 @@ AT_SETUP([C unit tests])
 AT_KEYWORDS([AC_@&t@CONFIG_TESTDIR])
 AT_KEYWORDS([AT_@&t@TESTED])
 
-mkdir t
+AS_MKDIR_P([t])
 AT_DATA([configure.ac], [[AC_INIT
 AC_PROG_CC
 AC_CONFIG_TESTDIR([t], [.])
