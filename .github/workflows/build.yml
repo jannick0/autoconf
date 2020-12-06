@@ -1,5 +1,3 @@
-# https://github.com/ghdl/ghdl/blob/99b542c849311c92e87e2c70d283de133c9d4093/.github/workflows/push.yml#L56-L102
-
 name: build
 
 on:
@@ -32,18 +30,15 @@ jobs:
 
     steps:
       - name: Init MSYS2-System
-        if: matrix.os = 'windows-latest'
+        if: matrix.os == 'windows-latest'
         uses: msys2/setup-msys2@v2
         with:
           update: true
           msystem: MSYS
           install: git base base-devel msys2-devel
-      - name: Init OSX-System
-        if: matrix.os = 'macos-latest'
+      - name: Init ${{ matrix.system }}-System
+        if: matrix.os == 'macos-latest' || matrix.os == 'ubuntu-latest'
         # https://formulae.brew.sh/formula/
-        run: brew install autoconf automake gettext texinfo
-      - name: Init Ubuntu-System
-        if: matrix.os = 'ubuntu-latest'
         run: brew install autoconf automake gettext texinfo
       - name: Require git-clone without EOL changes
         # ... otherwise BUILD (autoconf.texi and other documentation friends) fwill fail.
