@@ -9,27 +9,42 @@ on:
       - master
 
 jobs:
-  msys2:
-    runs-on: windows-latest
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include: [
+          { system: MSYS,   os: windows-latest,  shell: 'msys2 {0}' },
+          { system: Ubuntu, os: ubunutu-latest,  shell: bash        },
+          { system: OSX,    os: macos-latest,    shell: bash        }
+        ]
+
     env:
       MSYSTEM: MSYS
       GIT_CONFIG_NOSYSTEM: true
+      TESTSUITE_FLAGS_PLUS: -k testdir
+
+    runs-on: ${{ matrix.os }}
 
     defaults:
       run:
-        shell: msys2 {0}
+        shell: ${{ matrix.shell }}
 
     steps:
       - name: Init MSYS2-System
+        if: matrix.os = 'windows-latest'
         uses: msys2/setup-msys2@v2
         with:
           update: true
           msystem: MSYS
-          install: >-
-            git
-            base
-            base-devel
-            msys2-devel
+          install: git base base-devel msys2-devel
+      - name: Init OSX-System
+        if: matrix.os = 'macos-latest'
+        # https://formulae.brew.sh/formula/
+        run: brew install autoconf automake gettext texinfo
+      - name: Init Ubuntu-System
+        if: matrix.os = 'ubuntu-latest'
+        run: brew install autoconf automake gettext texinfo
       - name: Require git-clone without EOL changes
         # ... otherwise BUILD (autoconf.texi and other documentation friends) fwill fail.
         run: |
@@ -47,17 +62,17 @@ jobs:
           ../configure -C
       - name: Run Build
         if: ${{ success() }}
-        run: make -j1
+        run: make
         working-directory: build
       - name: Run Testsuite
         if: ${{ success() }}
-        run: make check TESTSUITEFLAGS='-j8 -k testdir' || make check TESTSUITEFLAGS='--recheck -j8 -k testdir -v -x -d'
+        run: make check TESTSUITEFLAGS='-j16 ${{ env.TESTSUITE_FLAGS_PLUS }}' || make check TESTSUITEFLAGS='--recheck -v -x -d -j16 ${{ env.TESTSUITE_FLAGS_PLUS }}'
         working-directory: build
       - name: Generate Artifacts upon Failure
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
-          name: failure
+          name: ${{ matrix.system }}-failure
           path: |
             build/config.*
             build/tests/**
