@@ -38,6 +38,7 @@ m4_define([AT_DATA_AUTOTEST],
 # where the testsuite should live.
 m4_define([AT_CHECK_AT_PREP],
 [AT_KEYWORDS([autotest])dnl
+m4_ifnblank([$6],[AS_MKDIR_P([$6])])
 dnl overquote AT_dir, to make it easier to use
 m4_pushdef([AT_dir], m4_ifval([$6], [[[$6]]], [.]))dnl
 dnl
