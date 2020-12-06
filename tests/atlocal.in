@@ -47,3 +47,24 @@ fi
 # direct aclocal invocations also use it.
 AUTOM4TE=autom4te
 export AUTOM4TE
+
+# Define default diff program variables.
+# NB: This is required if Autoconf >= 2.70 is built with Autoconf < 2.70.
+if test -z "$at_diff"; then
+  at_diff=diff
+fi
+if test -z "$at_devnull"; then
+  # Can we diff with `/dev/null'?  DU 5.0 refuses.
+  if $at_diff /dev/null /dev/null >/dev/null 2>&1; then
+    at_devnull=/dev/null
+  else
+    at_devnull="$at_suite_dir/devnull"
+    >"$at_devnull"
+  fi
+fi
+# Check if diff flag `-u' works.
+if at_ret=`"$at_diff" -u "$at_devnull" "$at_devnull" 2>&1` && test -z "$at_ret"
+then
+  at_diff="$at_diff -u"
+fi
+at_ret=''

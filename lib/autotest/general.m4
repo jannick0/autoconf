@@ -1002,22 +1002,6 @@ AS_ECHO(["$as_me: starting at: $at_start_date"]) >&AS_MESSAGE_LOG_FD
 AS_MKDIR_P(["$at_suite_dir"]) ||
   AS_ERROR([cannot create `$at_suite_dir'])
 
-# Can we diff with `/dev/null'?  DU 5.0 refuses.
-if diff /dev/null /dev/null >/dev/null 2>&1; then
-  at_devnull=/dev/null
-else
-  at_devnull=$at_suite_dir/devnull
-  >"$at_devnull"
-fi
-
-# Use `diff -u' when possible.
-if at_diff=`diff -u "$at_devnull" "$at_devnull" 2>&1` && test -z "$at_diff"
-then
-  at_diff='diff -u'
-else
-  at_diff=diff
-fi
-
 # Get the last needed group.
 for at_group in : $at_groups; do :; done
 
