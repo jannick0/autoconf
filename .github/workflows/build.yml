@@ -51,7 +51,7 @@ jobs:
         working-directory: build
       - name: Run Testsuite
         if: ${{ success() }}
-        run: make check TESTSUITEFLAGS='-j8' || make check TESTSUITEFLAGS='--recheck -j8 -v -x -d'
+        run: make check TESTSUITEFLAGS='-j8 -k testdir' || make check TESTSUITEFLAGS='--recheck -j8 -k testdir -v -x -d'
         working-directory: build
       - name: Generate Artifacts upon Failure
         if: ${{ failure() }}
