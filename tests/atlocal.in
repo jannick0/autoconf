@@ -47,3 +47,45 @@ fi
 # direct aclocal invocations also use it.
 AUTOM4TE=autom4te
 export AUTOM4TE
+
+# Define default diff program variables (at_diff, at_devnull).
+# NB: This is required if Autoconf >= 2.70 is built with Autoconf < 2.70.
+at_diff_default=no
+if test -z "$at_diff"
+then
+  at_diff=diff
+  at_diff_default=yes
+fi
+if test -z "$at_devnull"
+then
+  # Can we diff with `/dev/null'?  DU 5.0 refuses.
+  if $at_diff /dev/null /dev/null >/dev/null 2>&1
+  then
+    at_devnull=/dev/null
+  else
+    at_devnull="$at_suite_dir/devnull"
+    >"$at_devnull"
+  fi
+fi
+# Check if diff flag `-u' works.
+if at_ret=`"$at_diff" -u "$at_devnull" "$at_devnull" 2>&1` && test -z "$at_ret"
+then
+  at_diff="$at_diff -u"
+fi
+at_ret=''
+
+# Define gcc if available on PATH for compiling test programs
+# unless the environment variable CC_AT is defined.
+if test -z "$CC_AT"
+then
+  printf "Checking for 'gcc' on PATH to be used by testsuite..."
+  if at_ret=$(gcc --version 2>/dev/null | $SED '2,$d')
+  then
+    CC_AT=gcc
+    echo "using $at_ret"
+  else
+    CC_AT=none
+    echo "not found (you may want to define environment variable 'CC_AT')"
+  fi
+  at_ret=''
+fi

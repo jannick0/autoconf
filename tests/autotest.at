@@ -2145,3 +2145,263 @@ else
 fi
 
 AT_CLEANUP
+
+
+## ------------------- ##
+## AC_CONFIG_TESTDIR   ##
+## ------------------- ##
+
+dnl _AT_CONVERT_TEXT_TO_ONE_LINER( TEXT )
+dnl replace line breaks by single space and remove trailing white spaces,
+dnl and add a newline.
+m4_define([_AT_CONVERT_TEXT_TO_ONE_LINER],
+[m4_bpatsubsts($1,[\s*
+\s*],[ ],[\s*$],[])])])
+
+dnl _AT_CHECK_TESTDIR_ERROR_MESSAGE(EXPECTED-ERROR-MESSAGE, [AUTOCONF-RETURN-CODE = 1])
+dnl
+m4_define([_AT_CHECK_TESTDIR_ERROR_MESSAGE],
+[AT_DATA([expout],[_AT_CONVERT_TEXT_TO_ONE_LINER([$1])
+])
+AT_CHECK_AUTOCONF([],[m4_default([$2],[1])],[ignore],[stderr])
+mv -f stderr stderr-raw
+# Strip first error message beginning configure.ac location and convert to one-liner,
+# first on OSX (\r), then on Unix and Windows (EOL \r?\n).
+AT_CHECK([[$SED -n '/^configure.ac:[0-9]\+: \+\(error\|warning\): \+/{H;:a;n;/^ /{H;ba};x;s/^\r//;s/ *$//;s/ *\r */ /g;p;q}' stderr-raw]],[0],[expout],[ignore],
+  [AT_CHECK([[$SED -n '/^configure.ac:[0-9]\+: \+\(error\|warning\): \+/{H;:a;n;/^ /{H;ba};x;s/^\n//;s/ *$//;s/ *\r*\n */ /g;p;q}' stderr-raw]],[0],[expout],[ignore])])
+])dnl _AT_CHECK_TESTDIR_ERROR_MESSAGE
+
+
+## Sanity checks for AC_CONFIG_TESTDIR arguments
+AT_SETUP([AC_CONFIG_TESTDIR: missing arguments])
+AT_KEYWORDS([testsuite testdir testdir.args])
+AT_DATA([configure.ac],
+[[AC_INIT
+AC_CONFIG_TESTDIR
+AC_OUTPUT
+]])
+_AT_CHECK_TESTDIR_ERROR_MESSAGE([[configure.ac:2: error: AC_CONFIG_TESTDIR: missing arguments.]])
+AT_CLEANUP
+
+
+AT_SETUP([AC_CONFIG_TESTDIR: illegal empty first argument])
+AT_KEYWORDS([testsuite testdir testdir.args])
+AT_DATA([configure.ac],
+[[AC_INIT
+AC_CONFIG_TESTDIR([])
+AC_OUTPUT
+]])
+_AT_CHECK_TESTDIR_ERROR_MESSAGE([[configure.ac:2: error: AC_CONFIG_TESTDIR: argument 1 is empty.]])
+AT_CLEANUP
+
+
+AT_SETUP([AC_CONFIG_TESTDIR: illegal duplicate test directory])
+AT_KEYWORDS([testsuite testdir testdir.args])
+AT_DATA([configure.ac],
+[[AC_INIT
+AC_CONFIG_TESTDIR([t])
+AC_CONFIG_TESTDIR([t])
+AC_OUTPUT
+]])
+_AT_CHECK_TESTDIR_ERROR_MESSAGE([[configure.ac:3: error: Within the package the normalization of the test
+  directory name 't' is ambiguous, i.e. it is equal to one of another test directory name.
+  To fix please rename directory 't'.]])
+AT_CLEANUP
+
+
+AT_SETUP([AC_CONFIG_TESTDIR: ambiguous cpp-normalized test directories])
+AT_KEYWORDS([testsuite testdir testdir.args])
+AT_DATA([configure.ac],
+[[AC_INIT
+AC_CONFIG_TESTDIR([t_])
+AC_CONFIG_TESTDIR([t.])
+AC_OUTPUT
+]])
+_AT_CHECK_TESTDIR_ERROR_MESSAGE([[configure.ac:3: error: Within the package the normalization of the test
+  directory name 't.' is ambiguous, i.e. it is equal to one of another test directory name.
+  To fix please rename directory 't.'.]])
+AT_CLEANUP
+
+AT_SETUP([AC_CONFIG_TESTDIR: ignore arguments other than first and second])
+AT_KEYWORDS([testsuite testdir testdir.args])
+AT_DATA([configure.ac],
+[[AC_INIT
+AC_CONFIG_TESTDIR([t],[.],[ignore me])
+AC_OUTPUT
+]])
+_AT_CHECK_TESTDIR_ERROR_MESSAGE([[configure.ac:2: warning: AC_CONFIG_TESTDIR: argument 3 and higher is ignored.]],[0])
+AT_CLEANUP
+
+# Checks for configure
+AT_SETUP([AC_CONFIG_TESTDIR: two different test directories])
+AT_KEYWORDS([testsuite testdir testdir.configure])
+AT_DATA([configure.ac],
+[[AC_INIT
+AC_CONFIG_TESTDIR([t1])
+AC_CONFIG_TESTDIR([t2])
+AC_OUTPUT
+]])
+AT_CHECK_AUTOCONF
+AT_CLEANUP
+
+AT_SETUP([AC_CONFIG_TESTDIR: expected configure help screen elements])
+AT_KEYWORDS([testsuite testdir testdir.configure])
+AT_DATA([configure.ac],
+[[AC_INIT
+AC_CONFIG_TESTDIR([a])
+AC_CONFIG_TESTDIR([a/b])
+AC_OUTPUT
+]])
+AT_CHECK_AUTOCONF
+AT_CHECK_CONFIGURE([--help],[0],[stdout])
+dnl NB: After the variable name may be a line break, thus the weird counting.
+AT_CHECK_EGREP([[ DIFF_TESTSUITE]],[0],[3])
+AT_CHECK_EGREP([[ DIFF_TESTSUITE_A]],[0],[2])
+AT_CHECK_EGREP([[ DIFF_TESTSUITE_A_B]],[0],[1])
+AT_CHECK_EGREP([[ --disable-testsuites-unify-eol]],[0],[1])
+AT_CLEANUP
+
+AT_SETUP([AC_CONFIG_TESTDIR: existence of atconfig files in separate dirs])
+AT_KEYWORDS([testsuite testdir testdir.configure])
+AT_DATA([configure.ac],
+[[AC_INIT
+AC_CONFIG_TESTDIR([a])
+AC_CONFIG_TESTDIR([b])
+AC_OUTPUT
+]])
+AT_CHECK_AUTOCONF
+AT_CHECK_CONFIGURE([],[0],[stdout])
+AT_FAIL_IF([!test -f a/atconfig || ! test -f b/atconfig])
+AT_CLEANUP
+
+m4_define([_AT_CHECK_EOL_GENERATE_TEST_FILES_SRC],
+[[#include <stdio.h>
+#include <stdlib.h>
+
+static int
+file_write (const char *fn, const char *str)
+{
+  FILE *fp;
+  if (! (fp = fopen (fn, "wb"))) {
+    perror (fn);
+    return 1;
+  }
+  fputs (str, fp);
+  fclose (fp);
+  return 0;
+}
+
+int main ()
+{
+  /* TODO: What happens on OSX? */
+  if (file_write ("a.CRLF", "a\r\n")) return 1;
+  if (file_write ("a.LF", "a\n")) return 1;
+  return 0;
+}
+]])
+
+# AT_SETUP_CHECK_AT_TESTDIR(1/TEST-TITLE, 2/TEST-KEYWORDS, 3/TESTSUITE-SNIPPET,
+#  4/[CONFIGURE-AC-SNIPPET = 'AC_CONFIG_TESTDIR([tests])'] 5/[CONFIGURE-ARGS],
+#  6/[AT-ARGS], 7/[AT-STATUS = 0], 8/[TEST-PRE-CODE]), 9/[TEST-POST-CODE])
+# ---------------------------------------------------------------------------
+# Set up an AUTOTEST group labelled with title TEST-TITLE and keywords TEST-KEYWORDS
+# together with a tiny autoconf project.  Its file/directory structure as follows:
+# <AUTOTEST-NUMBER>
+# |- configure.ac       ... body CONFIGURE-AC-SNIPPET wrapped between AC_INIT and AC_OUTPUT
+# |- +configure
+# |- +config.log
+# |- +config.cache
+# |- +config.status
+# |- +testsuite.log     ... log of this autoconf test
+# \- tests
+#    |- mini-suite.at ... TESTSUITE-SNIPPET wrapped into complete test case
+#    |- *package.m4   ... default package parameters automatically generated
+#    |- *mini-suite   ... testsuite script automatically generated
+#    |- +atconfig
+#    \- mini-suite.dir/1
+#       |- +mini-suite.log  ... log running test group 1 of mini-suite
+#
+# Files labelled with an initial asterisk '*' are generated in the preparation step:
+# 0. <preparation>
+#     > tests/package.m4, tests/mini-suite
+# The following steps generate the files labelled with an initial plus '+':
+# 1. 'autoconf'
+#     > configure
+# 2. './configure -C CONFIGURE-ARGS'
+#     > config.log, config.cache, config.status, tests/atconfig
+# 3. 'cd tests; ./mini-suite -x -d AT-ARGS' expects return status AT-STATUS [default: 0].
+#     > tests/mini-suite.dir/1/**
+#
+m4_define([AT_SETUP_CHECK_AT_TESTDIR],
+[AT_SETUP([$1])
+AT_KEYWORDS([testsuite testdir $2])
+AT_CAPTURE_FILE([config.log])
+AT_CAPTURE_FILE([config.cache])
+AT_CAPTURE_FILE([tests/mini-suite.dir/1/mini-suite.log])
+AT_DATA([configure.ac],
+[[AC_INIT]]
+m4_default([$4],[[AC_CONFIG_TESTDIR([tests])]])
+[[AC_OUTPUT
+]])
+AT_CHECK_AT_PREP([mini-suite],
+[[AT_INIT([mini test suite])
+AT_SETUP([my only test])
+$3
+AT_CLEANUP
+]],[0],[],[stderr],[tests])
+# Remove atconfig generated by AT_CHECK_AT_PREP.
+# It will be generated by ./configure.
+rm -f tests/atconfig
+# TEST-PRE-CODE - BEGIN
+$8
+# TEST-PRE-CODE - END
+AT_CHECK_AUTOCONF
+AT_CHECK_CONFIGURE([-C $5])
+# FIXME: When running tests/mini-suite, atconfig is not considered.
+AT_CHECK([cd tests; $CONFIG_SHELL ./mini-suite -x -d $6],
+ [m4_default([$7], [0])],[stdout],[stderr])
+# TEST-POST-CODE - BEGIN
+$9
+# TEST-POST-CODE - END
+AT_CLEANUP
+])
+
+AT_SETUP([AC_CONFIG_TESTDIR: ordinary 'diff' distinguishes between CRLF and LF)])
+AT_KEYWORDS([testsuite testdir testdir.eol using.CC_AT])
+AT_DATA([generate-crlf-lf.c],[_AT_CHECK_EOL_GENERATE_TEST_FILES_SRC])
+AT_CHECK([[${CC_AT:-gcc} -o gen generate-crlf-lf.c]],[0],[ignore],[stderr])
+AT_CHECK([./gen],[0],[ignore],[stderr])
+AT_FAIL_IF([! test -f a.CRLF || ! test -f a.LF])
+AT_CHECK([diff a.CRLF a.LF],[1],[stdout],[stderr])
+AT_CLEANUP
+
+AT_SETUP_CHECK_AT_TESTDIR([AC_CONFIG_TESTDIR: default enable-testsuites-unify-eol],
+  [CRLF CRLF.unify-eol using.CC_AT],
+  [AT_SKIP_IF([test x"$CC_AT" = 'xnone'])
+   AT_SKIP_IF([test x"$at_diff_default" = xyes])
+   AT_DATA([generate-crlf-lf.c],]_AT_CHECK_EOL_GENERATE_TEST_FILES_SRC[)
+   AT_CHECK([${CC_AT:-gcc} -o gen generate-crlf-lf.c],[0],[ignore],[stderr])
+   AT_CHECK([./gen],[0],[ignore],[stderr])
+   AT_FAIL_IF([! test -f a.CRLF || ! test -f a.LF])
+   AT_CHECK([[$at_diff a.CRLF a.LF]])])
+
+AT_SETUP_CHECK_AT_TESTDIR([AC_CONFIG_TESTDIR: disable-testsuites-unify-eol],
+  [CRLF CRLF.unify-eol using.CC_AT],
+  [AT_SKIP_IF([test x"$CC_AT" = 'xnone'])
+   AT_SKIP_IF([test x"$at_diff_default" = xyes])
+   AT_DATA([generate-crlf-lf.c],]_AT_CHECK_EOL_GENERATE_TEST_FILES_SRC[)
+   AT_CHECK([${CC_AT:-gcc} -o gen generate-crlf-lf.c],[0],[ignore],[stderr])
+   AT_CHECK([./gen],[0],[ignore],[stderr])
+   AT_FAIL_IF([! test -f a.CRLF || ! test -f a.LF])
+   AT_CHECK([[$at_diff a.CRLF a.LF]],[1],[ignore],[ignore])],
+   [],[--disable-testsuites-unify-eol])
+
+AT_SETUP_CHECK_AT_TESTDIR([AC_CONFIG_TESTDIR: use env var DIFF_TESTSUITE],
+  [CRLF CRLF.unify-eol],
+  [AT_CHECK([test "x${at_diff// /}" = xcmp])],
+   [],[DIFF_TESTSUITE=cmp])
+
+AT_SETUP_CHECK_AT_TESTDIR([AC_CONFIG_TESTDIR: use env var DIFF_TESTSUITE_TESTS],
+  [CRLF CRLF.unify-eol],
+  [AT_CHECK([test "x${at_diff// /}" = xcmp])],
+   [],[DIFF_TESTSUITE_TESTS=cmp])
