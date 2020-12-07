@@ -2167,7 +2167,8 @@ AT_CHECK_AUTOCONF([],[m4_default([$2],[1])],[ignore],[stderr])
 mv -f stderr stderr-raw
 # Strip first error message beginning configure.ac location and convert to one-liner,
 # first on OSX (\r), then on Unix and Windows (EOL \r?\n).
-AT_CHECK([[$SED -n '/^configure.ac:[0-9]\+: \+\(error\|warning\): \+/{H;:a;n;/^ /{H;ba};x;s/^\r//;s/ *$//;s/ *\r */ /g;p;q}' stderr-raw]],[0],[expout],[ignore],
+m4_ifdef([__os2__],
+  [AT_CHECK([[$SED -n '/^configure.ac:[0-9]\+: \+\(error\|warning\): \+/{H;:a;n;/^ /{H;ba};x;s/^\r//;s/ *$//;s/ *\r */ /g;p;q}' stderr-raw]],[0],[expout],[ignore])],
   [AT_CHECK([[$SED -n '/^configure.ac:[0-9]\+: \+\(error\|warning\): \+/{H;:a;n;/^ /{H;ba};x;s/^\n//;s/ *$//;s/ *\r*\n */ /g;p;q}' stderr-raw]],[0],[expout],[ignore])])
 ])dnl _AT_CHECK_TESTDIR_ERROR_MESSAGE
 
