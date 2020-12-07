@@ -66,6 +66,7 @@ EOF
 ])
 m4_ifval([$6], [(cd AT_dir])
 AT_CHECK_AUTOM4TE([--language=autotest -o $1 $1.at], [$3], [$4], [$5])
+AS_IF([test -s '$1' && test "$SHELL_N" != none],[AT_CHECK_SHELL_SYNTAX([$1])])
 m4_ifval([$6], [)])
 m4_popdef([AT_dir])dnl
 ]) # AT_CHECK_AT_PREP
