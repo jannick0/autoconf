@@ -1,0 +1,164 @@
+name: build
+
+on:
+  push:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  msys2:
+    runs-on: windows-latest
+    env:
+      MSYSTEM: MSYS
+      GIT_CONFIG_NOSYSTEM: true
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Init MSYS2-System
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          msystem: MSYS
+          install: >-
+            git
+            base
+            base-devel
+            msys2-devel
+      - name: Require git-clone without EOL changes
+        # ... otherwise BUILD (autoconf.texi and other documentation friends) might fail.
+        run: |
+          git config --global core.autocrlf false
+          git config --global --list
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Run Configuration
+        run: |
+          autoreconf -vfi
+          mkdir -p build
+          cd build
+          ../configure -C
+      - name: Run Build
+        if: ${{ success() }}
+        run: make -j1
+        working-directory: build
+      - name: Run Testsuite
+        if: ${{ success() }}
+        run: |
+          make check TESTSUITEFLAGS='-j16' || {
+            cd tests
+            echo === Contents of testsuite.log ===
+            cat testsuite.log
+            echo === End of testsuite.log ===
+            tar -czf msys2-testsuite.dir.tar.gz testsuite.log testsuite.dir
+            exit 1
+          }
+        working-directory: build
+      - name: Upload Artifact upon Failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          path: build/tests/msys2-testsuite.dir.tar.gz
+
+  macos:
+    runs-on: macos-latest
+    env:
+      GIT_CONFIG_NOSYSTEM: true
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Init OSX-System
+        run: brew install autoconf automake gettext texinfo help2man
+      - name: Require git-clone without EOL changes
+        # ... otherwise BUILD (autoconf.texi and other documentation friends) might fail.
+        run: |
+          git config --global core.autocrlf false
+          git config --global --list
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Run Configuration
+        run: |
+          autoreconf -vfi
+          mkdir -p build
+          cd build
+          ../configure -C
+      - name: Run Build
+        if: ${{ success() }}
+        run: make -j1
+        working-directory: build
+      - name: Run Testsuite
+        if: ${{ success() }}
+        run: |
+          make check TESTSUITEFLAGS='-j16' || {
+            cd tests
+            echo === Contents of testsuite.log ===
+            cat testsuite.log
+            echo === End of testsuite.log ===
+            tar -czf macos-testsuite.dir.tar.gz testsuite.log testsuite.dir
+            exit 1
+          }
+        working-directory: build
+      - name: Upload Artifact upon Failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          path: build/tests/macos-testsuite.dir.tar.gz
+
+  unix:
+    runs-on: ubuntu-latest
+    env:
+      GIT_CONFIG_NOSYSTEM: true
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Init UNIX-System
+        run: brew install autoconf automake gettext texinfo help2man
+      - name: Require git-clone without EOL changes
+        # ... otherwise BUILD (autoconf.texi and other documentation friends) might fail.
+        run: |
+          git config --global core.autocrlf false
+          git config --global --list
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Run Configuration
+        run: |
+          autoreconf -vfi
+          mkdir -p build
+          cd build
+          ../configure -C
+      - name: Run Build
+        if: ${{ success() }}
+        run: make -j1
+        working-directory: build
+      - name: Run Testsuite
+        if: ${{ success() }}
+        run: |
+          make check TESTSUITEFLAGS='-j16' || {
+            cd tests
+            echo === Contents of testsuite.log ===
+            cat testsuite.log
+            echo === End of testsuite.log ===
+            tar -czf unix-testsuite.dir.tar.gz testsuite.log testsuite.dir
+            exit 1
+          }
+        working-directory: build
+      - name: Upload Artifact upon Failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          path: build/tests/unix-testsuite.dir.tar.gz
